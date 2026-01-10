@@ -269,20 +269,47 @@ Note this IP address (e.g., `192.168.1.100`). You'll need it for the proxy setti
 
 ### 4c. Install Mitmproxy Certificate on Android
 
-**While mitmproxy is running (next step will start it):**
+Android apps targeting API 24+ (Android 7+) only trust system certificates, not user-installed ones. For the Kohler app, you need to install the mitmproxy CA as a **system certificate**.
 
-1. Open Chrome on Android
-2. Go to: `http://mitm.it`
-3. Tap **Android** to download the certificate
-4. You'll be prompted to name the certificate - enter: `mitmproxy`
-5. If prompted for a PIN/password, create one
+**Step 1: Get the mitmproxy CA certificate**
 
-**If the download doesn't start automatically:**
+On your Mac, run mitmproxy once to generate the CA:
+```bash
+mitmproxy --listen-port 8080
+# Press 'q' then 'y' to quit after it starts
+```
 
-1. Go to: **Settings** → **Security** → **Encryption & credentials**
-2. Tap **Install from storage** or **Install a certificate**
-3. Choose **CA certificate**
-4. Find and select the downloaded `mitmproxy-ca-cert.pem` file
+The CA cert is at: `~/.mitmproxy/mitmproxy-ca-cert.pem`
+
+**Step 2: Convert and push to emulator as system cert**
+
+```bash
+# Convert to Android format (hash-named)
+CERT_HASH=$(openssl x509 -inform PEM -subject_hash_old -in ~/.mitmproxy/mitmproxy-ca-cert.pem | head -1)
+cp ~/.mitmproxy/mitmproxy-ca-cert.pem ${CERT_HASH}.0
+
+# Push to emulator's system certs
+adb root
+adb remount
+adb push ${CERT_HASH}.0 /system/etc/security/cacerts/
+adb shell chmod 644 /system/etc/security/cacerts/${CERT_HASH}.0
+
+# Clean up local file
+rm ${CERT_HASH}.0
+```
+
+**Step 3: Verify installation**
+
+```bash
+adb shell ls -la /system/etc/security/cacerts/ | grep -v "2009-01-01"
+```
+
+You should see your newly added certificate with today's date.
+
+**Alternative (simpler but less reliable):** Install as user cert via browser:
+1. Open Chrome on Android, go to `http://mitm.it` (while mitmproxy runs)
+2. Download the Android certificate
+3. This may not work for all apps due to network security config
 
 ---
 
@@ -292,8 +319,12 @@ This captures the real API subscription key by bypassing SSL pinning with Frida 
 
 ### 5a. Start Frida Server on Emulator
 
-Open a terminal and run:
+**Important:** Frida-server needs root access on Genymotion. Open a terminal and run:
 ```bash
+# First, get root access
+adb root
+
+# Wait a moment, then start frida-server
 adb shell /data/local/tmp/frida-server &
 ```
 
@@ -302,7 +333,9 @@ Verify it's running:
 frida-ps -U | head -5
 ```
 
-You should see a list of processes.
+You should see a list of processes. If you see "unable to find process", run `adb root` again.
+
+**Note:** You must restart frida-server after every emulator reboot.
 
 ### 5b. Start Mitmproxy
 
@@ -531,7 +564,7 @@ nano .env
 - Make sure the mitmproxy certificate is installed (Step 4c)
 - Check Frida terminal shows all bypasses installed successfully
 
-### Kohler app crashes or shows error on launch
+### Kohler app crashes or shows "rooted device" error
 
 The app detected root/emulator. Check the Frida terminal output:
 
@@ -543,6 +576,50 @@ The app detected root/emulator. Check the Frida terminal output:
 2. **"Is.b not found"** - Kohler updated their obfuscation. The root detection class name changed. Check `docs/REVERSE_ENGINEERING.md` for how to find the new class name.
 
 3. **App shows "rooted device" error** - A root check wasn't bypassed. Look for `[-]` lines in Frida output showing which hook failed.
+
+4. **All bypasses show installed but still fails** - Make sure you see BOTH:
+   - `[+] Kohler Is.b root detection bypass installed`
+   - `[+] File.* bypass installed`
+
+   The app uses multiple detection methods. Both Is.b hooks AND File.* hooks are required.
+
+### App shows "Request timeout" after bypasses load
+
+1. **Check location services** - Enable GPS on the emulator:
+   ```bash
+   adb shell settings put secure location_providers_allowed gps,network
+   adb shell settings put secure location_mode 3
+   ```
+
+2. **Clear stale proxy settings** - If you previously used mitmproxy:
+   ```bash
+   adb shell settings delete global http_proxy
+   ```
+
+3. **Clear app data and retry** - Cached credentials might be stale:
+   ```bash
+   adb shell pm clear com.kohler.hermoth
+   ```
+
+4. **Restart frida-server** - After emulator reboot/crash:
+   ```bash
+   adb root
+   adb shell pkill frida-server
+   adb shell /data/local/tmp/frida-server &
+   ```
+
+### Frida shows "unable to find process" or connection errors
+
+```bash
+# Restart adb and frida
+adb kill-server
+adb start-server
+adb root
+adb shell /data/local/tmp/frida-server &
+
+# Verify connection
+frida-ps -U | head -5
+```
 
 ### Kohler app works but mitmproxy sees nothing
 

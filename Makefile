@@ -9,7 +9,7 @@
 #   make clean      - Remove generated files
 
 SHELL := /bin/bash
-.PHONY: install extract proxy env test clean help
+.PHONY: install extract proxy env test clean help frida-start frida-stop frida-status bypass
 
 # Directories
 SCRIPTS_DIR := scripts
@@ -30,6 +30,12 @@ help:
 	@echo "  make env            Generate .env file (interactive)"
 	@echo "  make test           Test authentication and device discovery"
 	@echo "  make clean          Remove generated files"
+	@echo ""
+	@echo "Frida (for emulator):"
+	@echo "  make frida-start    Start frida-server on emulator (requires adb root)"
+	@echo "  make frida-stop     Stop frida-server on emulator"
+	@echo "  make frida-status   Check frida connection status"
+	@echo "  make bypass         Launch Kohler app with root/SSL bypass"
 	@echo ""
 	@echo "The APIM key must be captured via mitmproxy + Frida (APK key is outdated)."
 	@echo "See SETUP.md for detailed step-by-step instructions."
@@ -210,3 +216,31 @@ clean:
 	@rm -rf $(BUILD_DIR)
 	@rm -f $(ENV_FILE)
 	@echo "Done. Note: .env was removed. Run 'make env' to recreate."
+
+# =============================================================================
+# Frida Management (for Genymotion emulator)
+# =============================================================================
+
+frida-start:
+	@echo "Starting frida-server on emulator..."
+	@adb root >/dev/null 2>&1 || true
+	@sleep 1
+	@adb shell "pkill -9 frida-server 2>/dev/null; /data/local/tmp/frida-server &" &
+	@sleep 2
+	@echo "Checking frida connection..."
+	@frida-ps -U >/dev/null 2>&1 && echo "Frida server running!" || echo "ERROR: Could not connect to frida-server"
+
+frida-stop:
+	@echo "Stopping frida-server..."
+	@adb shell pkill -9 frida-server 2>/dev/null || true
+	@echo "Done"
+
+frida-status:
+	@echo "Checking frida connection..."
+	@frida-ps -U 2>&1 | head -5 || echo "ERROR: Frida not connected"
+
+bypass:
+	@echo "Launching Kohler app with bypass script..."
+	@echo "After the app launches, proceed through the location screen and log in."
+	@echo ""
+	@frida -U -f com.kohler.hermoth -l scripts/frida_ssl_bypass.js
