@@ -110,11 +110,38 @@ Control shower via presets (1-5) or stop (0).
 
 **Response:** `201 Created`
 
+#### Direct Valve Control (writesolostatus)
+
+Control individual valves with temperature, flow, and outlet selection.
+
+**POST** `/platform/api/v1/commands/gcs/writesolostatus`
+
+```json
+{
+  "gcsValveControlModel": {
+    "primaryValve1": "0179c801",
+    "secondaryValve1": "1179c801",
+    "secondaryValve2": "00000000",
+    "secondaryValve3": "00000000",
+    "secondaryValve4": "00000000",
+    "secondaryValve5": "00000000",
+    "secondaryValve6": "00000000",
+    "secondaryValve7": "00000000"
+  },
+  "deviceId": "gcs-xxxxxxxxx",
+  "sku": "GCS",
+  "tenantId": "customer-uuid"
+}
+```
+
+**Response:** `201 Created` with `correlationId` and `timestamp`
+
+**Note:** This endpoint returned 404 in earlier REST tests but works from the app. May require specific session state or headers.
+
+See [dev/docs/VALVE_PROTOCOL.md](../dev/docs/VALVE_PROTOCOL.md) for complete valve value encoding.
+
 ### Non-Working Endpoints (404)
 
-These endpoints exist in the APK but return 404:
-
-- `/platform/api/v1/commands/gcs/writesolostatus` - Direct valve control
 - `/platform/api/v1/commands/gcs/writepresetstart` - Preset start (use controlpresetorexperience)
 
 ### Untested Endpoints
@@ -182,16 +209,23 @@ The connection string is not returned by the REST API. It must be captured via F
 - 1 Primary Valve
 - Up to 7 Secondary Valves
 
-### Valve Status Format
+### Valve Value Format
 
-16-character hex string encoding valve state, temperature, and flow:
+8-character hex string (4 bytes) encoding valve state:
 
 ```
-0184c80000000001
-│└─────┬─────┘
-│      └── Temperature + state encoding (partially decoded)
-└── Valve ID (01 = primary, 11+ = secondary)
+[prefix][temp][flow][mode]
+   01     79    c8    01
 ```
+
+| Byte | Description |
+|------|-------------|
+| 0 | Valve prefix: `01`=primary, `11`=secondary |
+| 1 | Temperature (0x00-0xE8, ~15-48.8°C) |
+| 2 | Flow rate (0x00-0xC8, 0-100%) |
+| 3 | Mode: `00`=off, `01`=shower, `02`=tub, `03`=tub+on, `40`=stop |
+
+See [dev/docs/VALVE_PROTOCOL.md](../dev/docs/VALVE_PROTOCOL.md) for complete encoding details.
 
 ## Key Identifiers
 
