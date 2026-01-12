@@ -109,22 +109,22 @@ def main():
     print()
 
     # =========================================================================
-    # APIM Key (must be captured via mitmproxy)
+    # APIM Key (extracted from APK)
     # =========================================================================
     print("-" * 60)
     print("STEP 2: APIM Subscription Key")
     print("-" * 60)
     print()
-    print("  The APIM key must be captured via mitmproxy + Frida.")
-    print("  (The key in the APK is outdated and won't work.)")
-    print()
 
-    if captured.get("apim_key"):
+    if extracted.get("apim_key"):
+        print(f"  Found APIM_KEY from APK extraction: {extracted['apim_key'][:8]}...")
+        secrets["apim_key"] = extracted["apim_key"]
+    elif captured.get("apim_key"):
         print(f"  Found APIM_KEY from mitmproxy capture: {captured['apim_key'][:8]}...")
         secrets["apim_key"] = captured["apim_key"]
     else:
         print("  APIM_KEY not found.")
-        print("  Run 'make proxy' to capture it, or enter manually:")
+        print("  Run 'make extract' to extract it from APK, or enter manually:")
         print()
         secrets["apim_key"] = prompt("  KOHLER_APIM_KEY")
 

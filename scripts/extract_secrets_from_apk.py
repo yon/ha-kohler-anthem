@@ -4,10 +4,7 @@
 Usage:
     python3 extract_secrets_from_apk.py /path/to/decompiled/apk
 
-Outputs JSON with CLIENT_ID and API_RESOURCE.
-
-Note: The APIM key in the APK is OUTDATED and won't work.
-      You must capture the real key via mitmproxy + Frida.
+Outputs JSON with CLIENT_ID, API_RESOURCE, and APIM_KEY.
 """
 
 import json
@@ -19,12 +16,14 @@ from pathlib import Path
 
 def find_msal_config(decompiled_path: Path) -> dict:
     """Search for MSAL configuration containing client_id."""
-    results = {"client_id": None, "api_resource": None}
+    results = {"client_id": None, "api_resource": None, "apim_key": None}
 
     # Search patterns
     client_id_pattern = re.compile(r'"client_id"\s*:\s*"([a-f0-9-]{36})"', re.IGNORECASE)
     # API resource is often in scope URLs
     scope_pattern = re.compile(r'https://[^/]+/([a-f0-9-]{36})/', re.IGNORECASE)
+    # APIM key is hardcoded in OkHttp interceptor
+    apim_pattern = re.compile(r'"Ocp-Apim-Subscription-Key",\s*"([a-f0-9]{32})"')
 
     # Walk through all files
     for root, dirs, files in os.walk(decompiled_path):
@@ -51,8 +50,14 @@ def find_msal_config(decompiled_path: Path) -> dict:
                         if resource != results.get("client_id"):
                             results["api_resource"] = resource
 
-                # Stop if we found both
-                if results["client_id"] and results["api_resource"]:
+                # Look for APIM subscription key
+                if not results["apim_key"]:
+                    match = apim_pattern.search(content)
+                    if match:
+                        results["apim_key"] = match.group(1)
+
+                # Stop if we found all three
+                if results["client_id"] and results["api_resource"] and results["apim_key"]:
                     break
 
             except Exception:
@@ -63,7 +68,7 @@ def find_msal_config(decompiled_path: Path) -> dict:
 
 def find_in_resources(decompiled_path: Path) -> dict:
     """Search in resources/assets for msal_config.json and other config files."""
-    results = {"client_id": None, "api_resource": None}
+    results = {"client_id": None, "api_resource": None, "apim_key": None}
 
     # Common locations for MSAL config
     possible_paths = [
@@ -108,21 +113,22 @@ def main():
     results = find_in_resources(decompiled_path)
 
     # Fall back to full search if needed
-    if not results["client_id"] or not results["api_resource"]:
+    if not results["client_id"] or not results["api_resource"] or not results["apim_key"]:
         full_results = find_msal_config(decompiled_path)
         if not results["client_id"]:
             results["client_id"] = full_results["client_id"]
         if not results["api_resource"]:
             results["api_resource"] = full_results["api_resource"]
+        if not results["apim_key"]:
+            results["apim_key"] = full_results["apim_key"]
 
     # Validate
     if not results["client_id"]:
         print("Warning: Could not find client_id in APK", file=sys.stderr)
     if not results["api_resource"]:
         print("Warning: Could not find api_resource in APK", file=sys.stderr)
-
-    # Note about APIM key
-    print("Note: APIM key must be captured via mitmproxy + Frida (make proxy)", file=sys.stderr)
+    if not results["apim_key"]:
+        print("Warning: Could not find apim_key in APK", file=sys.stderr)
 
     # Output JSON
     print(json.dumps(results, indent=2))
