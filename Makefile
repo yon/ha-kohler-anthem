@@ -9,7 +9,7 @@
 #   make clean      - Remove generated files
 
 SHELL := /bin/bash
-.PHONY: install extract proxy env test clean help frida-start frida-stop frida-status bypass proxy-on proxy-off proxy-status capture mitm-cert-install
+.PHONY: install extract proxy env test clean help frida-start frida-stop frida-status bypass proxy-on proxy-off proxy-status capture mitm-cert-install release
 
 # Directories
 SCRIPTS_DIR := scripts
@@ -260,3 +260,25 @@ mitm-cert-install:
 		echo "Certificate installed successfully!"; \
 	fi && \
 	echo "Verified: $$($(ADB) shell ls -la /system/etc/security/cacerts/$$HASH.0)"
+
+# =============================================================================
+# GitHub Release for HACS
+# =============================================================================
+
+VERSION := $(shell python3 -c "import json; print(json.load(open('custom_components/kohler_anthem/manifest.json'))['version'])")
+
+release:
+	@echo "Creating GitHub release v$(VERSION)..."
+	@if git rev-parse "v$(VERSION)" >/dev/null 2>&1; then \
+		echo "Tag v$(VERSION) already exists"; \
+	else \
+		git tag -a "v$(VERSION)" -m "Release v$(VERSION)"; \
+		git push origin "v$(VERSION)"; \
+	fi
+	@gh release create "v$(VERSION)" \
+		--title "v$(VERSION)" \
+		--notes "Kohler Anthem HACS Integration v$(VERSION)" \
+		--latest \
+		2>/dev/null || echo "Release v$(VERSION) already exists"
+	@echo ""
+	@echo "Release created: https://github.com/yon/kohler-anthem-hacs/releases/tag/v$(VERSION)"
