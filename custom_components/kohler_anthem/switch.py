@@ -7,10 +7,14 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import ANTHEM_DEFAULT_TEMP_F, DOMAIN
+from .lib import KohlerAnthemClient, Outlet
+from .lib.models import DeviceState
+
+from .const import DOMAIN, FLOW_DEFAULT_PERCENT, TEMP_DEFAULT_CELSIUS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,55 +26,84 @@ async def async_setup_entry(
 ) -> None:
     """Set up Kohler Anthem switch entities."""
     data = hass.data[DOMAIN][config_entry.entry_id]
-    api = data["api"]
+    client: KohlerAnthemClient = data["client"]
     coordinator = data["coordinator"]
+    devices = data["device_info"]["devices"]
 
-    async_add_entities([KohlerAnthemValveSwitch(coordinator, api, config_entry)])
+    entities = []
+    for device in devices:
+        entities.append(
+            KohlerAnthemValveSwitch(
+                coordinator,
+                client,
+                config_entry,
+                device.device_id,
+                device.logical_name,
+            )
+        )
+
+    async_add_entities(entities)
 
 
 class KohlerAnthemValveSwitch(CoordinatorEntity, SwitchEntity):
     """Representation of a Kohler Anthem valve switch."""
 
-    def __init__(self, coordinator, api, config_entry):
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator,
+        client: KohlerAnthemClient,
+        config_entry: ConfigEntry,
+        device_id: str,
+        device_name: str,
+    ) -> None:
         """Initialize the switch."""
         super().__init__(coordinator)
-        self._api = api
-        self._attr_unique_id = f"{config_entry.entry_id}_valve"
-        self._attr_name = "Kohler Anthem Valve"
+        self._client = client
+        self._device_id = device_id
+        self._attr_unique_id = f"{device_id}_valve"
+        self._attr_name = "Valve"
         self._attr_is_on = False
+
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, device_id)},
+            name=device_name or "Kohler Anthem Shower",
+            manufacturer="Kohler",
+            model="Anthem Digital Shower",
+        )
+
+    @property
+    def _device_state(self) -> DeviceState | None:
+        """Get the current device state."""
+        if self.coordinator.data:
+            states = self.coordinator.data.get("states", {})
+            return states.get(self._device_id)
+        return None
 
     @property
     def is_on(self) -> bool:
         """Return true if the valve is on."""
-        if self.coordinator.data:
-            # Parse valve state from status data
-            # Try different possible keys based on actual API response format
-            state = (
-                self.coordinator.data.get("valve_on")
-                or self.coordinator.data.get("valveOn")
-                or self.coordinator.data.get("running")
-                or self.coordinator.data.get("state") == "on"
-                or self.coordinator.data.get("status") == "running"
-            )
-            if state is not None:
-                if isinstance(state, bool):
-                    return state
-                if isinstance(state, str):
-                    return state.lower() in ("on", "running", "active", "started")
+        state = self._device_state
+        if state:
+            return state.is_running
         return self._attr_is_on
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the valve on."""
-        success = await self._api.start_shower(ANTHEM_DEFAULT_TEMP_F)
-        if success:
-            self._attr_is_on = True
+        await self._client.turn_on_outlet(
+            self._device_id,
+            Outlet.SHOWERHEAD,
+            temperature_celsius=TEMP_DEFAULT_CELSIUS,
+            flow_percent=FLOW_DEFAULT_PERCENT,
+        )
+        self._attr_is_on = True
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the valve off."""
-        success = await self._api.stop_shower()
-        if success:
-            self._attr_is_on = False
+        await self._client.turn_off(self._device_id)
+        self._attr_is_on = False
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()

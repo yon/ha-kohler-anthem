@@ -219,6 +219,77 @@ if (Java.available) {
         } catch(e) {}
 
         // =====================================================================
+        // IOT HUB SETTINGS CAPTURE (from HTTP response)
+        // =====================================================================
+
+        // IoTHubSettings - capture when connection string is set
+        try {
+            var IoTHubSettings = Java.use("com.utils.network.retrofit.proxy.platform.model.mobilesetting.iothubsettings.IoTHubSettings");
+
+            IoTHubSettings.setConnectionString.implementation = function(str) {
+                console.log("\n" + "*".repeat(70));
+                console.log("[IOT HUB SETTINGS] CONNECTION STRING:");
+                console.log(str);
+                console.log("*".repeat(70));
+                return this.setConnectionString(str);
+            };
+
+            IoTHubSettings.setDeviceId.implementation = function(str) {
+                console.log("[IOT HUB SETTINGS] Device ID: " + str);
+                return this.setDeviceId(str);
+            };
+
+            IoTHubSettings.setIoTHub.implementation = function(str) {
+                console.log("[IOT HUB SETTINGS] IoT Hub: " + str);
+                return this.setIoTHub(str);
+            };
+
+            IoTHubSettings.setUsername.implementation = function(str) {
+                console.log("[IOT HUB SETTINGS] Username: " + str);
+                return this.setUsername(str);
+            };
+
+            IoTHubSettings.setPassword.implementation = function(str) {
+                console.log("[IOT HUB SETTINGS] Password: " + str);
+                return this.setPassword(str);
+            };
+
+            IoTHubSettings.setClientId.implementation = function(str) {
+                console.log("[IOT HUB SETTINGS] Client ID: " + str);
+                return this.setClientId(str);
+            };
+
+            console.log("[+] IoTHubSettings capture installed");
+        } catch(e) {
+            console.log("[-] IoTHubSettings capture failed: " + e);
+        }
+
+        // MobileSettingResponse - capture full response
+        try {
+            var MobileSettingResponse = Java.use("com.utils.network.retrofit.proxy.platform.model.mobilesetting.MobileSettingResponse");
+
+            MobileSettingResponse.setIoTHubSettings.implementation = function(settings) {
+                console.log("\n" + "*".repeat(70));
+                console.log("[MOBILE SETTING] IoT Hub Settings received!");
+                if (settings != null) {
+                    try {
+                        var Gson = Java.use("com.google.gson.Gson");
+                        var gson = Gson.$new();
+                        console.log(gson.toJson(settings));
+                    } catch(e) {
+                        console.log("  (Could not serialize: " + e + ")");
+                    }
+                }
+                console.log("*".repeat(70));
+                return this.setIoTHubSettings(settings);
+            };
+
+            console.log("[+] MobileSettingResponse capture installed");
+        } catch(e) {
+            console.log("[-] MobileSettingResponse capture failed: " + e);
+        }
+
+        // =====================================================================
         // READY
         // =====================================================================
 

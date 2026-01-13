@@ -2,21 +2,32 @@
   "config": {
     "step": {
       "user": {
-        "title": "Set up Kohler Anthem",
-        "description": "Enter your Kohler Konnect credentials",
+        "title": "Kohler Anthem Setup",
+        "description": "Enter your Kohler Konnect credentials and API keys. See [setup docs]({docs_url}) for instructions.",
         "data": {
-          "username": "Email / Username",
-          "password": "Password"
+          "username": "Email",
+          "password": "Password",
+          "client_id": "Client ID",
+          "apim_subscription_key": "APIM Subscription Key",
+          "api_resource": "API Resource"
+        },
+        "data_description": {
+          "username": "Your Kohler Konnect account email",
+          "password": "Your Kohler Konnect account password",
+          "client_id": "OAuth client ID (from APK)",
+          "apim_subscription_key": "Azure API Management key (from mitmproxy)",
+          "api_resource": "API resource identifier (from APK)"
         }
       }
     },
     "error": {
-      "invalid_auth": "Invalid username or password. Please check your Kohler Konnect credentials.",
-      "cannot_connect": "Failed to connect to Azure cloud services.",
-      "unknown": "Unexpected error occurred"
+      "invalid_auth": "Invalid authentication credentials",
+      "cannot_connect": "Failed to connect to Kohler API",
+      "cannot_discover": "Could not discover devices. Check your credentials.",
+      "unknown": "An unexpected error occurred"
     },
     "abort": {
-      "already_configured": "Device is already configured"
+      "already_configured": "This account is already configured"
     }
   }
 }

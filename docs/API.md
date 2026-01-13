@@ -1,7 +1,219 @@
 # Kohler Anthem API Reference
 
 Complete API documentation for the Kohler Anthem Digital Shower system.
-Reverse-engineered from app traffic capture on 2026-01-12.
+Reverse-engineered from app traffic capture on 2026-01-12, updated 2026-01-13.
+
+---
+
+## Quick Start: Operating the Shower via API
+
+### Prerequisites
+
+You need these values (captured via Frida from the mobile app):
+- `ACCESS_TOKEN` - OAuth bearer token
+- `APIM_KEY` - Azure API Management subscription key (e.g., `429ecb1d0b5e4258aa0a2bfadd82a493`)
+- `CUSTOMER_ID` - Your tenant/customer ID from JWT `oid` claim
+- `DEVICE_ID` - Your shower device ID (e.g., `gcs-sio3225nc9`)
+
+### Complete Workflow Example
+
+```bash
+# Set your credentials
+export ACCESS_TOKEN="eyJ..."
+export APIM_KEY="429ecb1d0b5e4258aa0a2bfadd82a493"
+export CUSTOMER_ID="cfd22e16-f7be-4038-b7ff-bf08790b8ec4"
+export DEVICE_ID="gcs-sio3225nc9"
+export BASE_URL="https://api-kohler-us.kohler.io"
+
+# Common headers
+HEADERS=(
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+  -H "Content-Type: application/json"
+  -H "Ocp-Apim-Subscription-Key: $APIM_KEY"
+)
+```
+
+### 1. Turn ON Shower (Default Temperature 100°F, 100% Flow)
+
+```bash
+curl -X POST "$BASE_URL/platform/api/v1/commands/gcs/solowritesystem" \
+  "${HEADERS[@]}" \
+  -d '{
+    "deviceId": "'$DEVICE_ID'",
+    "sku": "GCS",
+    "tenantId": "'$CUSTOMER_ID'",
+    "gcsValveControlModel": {
+      "primaryValve1": "0179c801",
+      "secondaryValve1": "1179c801",
+      "secondaryValve2": "00000000",
+      "secondaryValve3": "00000000",
+      "secondaryValve4": "00000000",
+      "secondaryValve5": "00000000",
+      "secondaryValve6": "00000000",
+      "secondaryValve7": "00000000"
+    }
+  }'
+```
+
+### 2. Turn OFF Shower
+
+```bash
+curl -X POST "$BASE_URL/platform/api/v1/commands/gcs/solowritesystem" \
+  "${HEADERS[@]}" \
+  -d '{
+    "deviceId": "'$DEVICE_ID'",
+    "sku": "GCS",
+    "tenantId": "'$CUSTOMER_ID'",
+    "gcsValveControlModel": {
+      "primaryValve1": "0179c800",
+      "secondaryValve1": "1179c800",
+      "secondaryValve2": "00000000",
+      "secondaryValve3": "00000000",
+      "secondaryValve4": "00000000",
+      "secondaryValve5": "00000000",
+      "secondaryValve6": "00000000",
+      "secondaryValve7": "00000000"
+    }
+  }'
+```
+
+### 3. Set Temperature to 106°F (Hot)
+
+```bash
+# 0x9b = 155 decimal = 41.1°C / 106°F
+curl -X POST "$BASE_URL/platform/api/v1/commands/gcs/solowritesystem" \
+  "${HEADERS[@]}" \
+  -d '{
+    "deviceId": "'$DEVICE_ID'",
+    "sku": "GCS",
+    "tenantId": "'$CUSTOMER_ID'",
+    "gcsValveControlModel": {
+      "primaryValve1": "019bc801",
+      "secondaryValve1": "119bc801",
+      "secondaryValve2": "00000000",
+      "secondaryValve3": "00000000",
+      "secondaryValve4": "00000000",
+      "secondaryValve5": "00000000",
+      "secondaryValve6": "00000000",
+      "secondaryValve7": "00000000"
+    }
+  }'
+```
+
+### 4. Set Flow to 50%
+
+```bash
+# 0x64 = 100 decimal = 50% flow
+curl -X POST "$BASE_URL/platform/api/v1/commands/gcs/solowritesystem" \
+  "${HEADERS[@]}" \
+  -d '{
+    "deviceId": "'$DEVICE_ID'",
+    "sku": "GCS",
+    "tenantId": "'$CUSTOMER_ID'",
+    "gcsValveControlModel": {
+      "primaryValve1": "01796401",
+      "secondaryValve1": "11796401",
+      "secondaryValve2": "00000000",
+      "secondaryValve3": "00000000",
+      "secondaryValve4": "00000000",
+      "secondaryValve5": "00000000",
+      "secondaryValve6": "00000000",
+      "secondaryValve7": "00000000"
+    }
+  }'
+```
+
+### 5. Start a Preset
+
+```bash
+# Start preset #3
+curl -X POST "$BASE_URL/platform/api/v1/commands/gcs/controlpresetorexperience" \
+  "${HEADERS[@]}" \
+  -d '{
+    "deviceId": "'$DEVICE_ID'",
+    "sku": "GCS",
+    "tenantId": "'$CUSTOMER_ID'",
+    "presetOrExperienceId": "3"
+  }'
+```
+
+### 6. Start an Experience (e.g., "Wake Up")
+
+```bash
+# Start "Wake Up" experience (ID 17)
+curl -X POST "$BASE_URL/platform/api/v1/commands/gcs/controlpresetorexperience" \
+  "${HEADERS[@]}" \
+  -d '{
+    "deviceId": "'$DEVICE_ID'",
+    "sku": "GCS",
+    "tenantId": "'$CUSTOMER_ID'",
+    "presetOrExperienceId": "17"
+  }'
+```
+
+### 7. Stop Preset/Experience
+
+```bash
+# Stop by setting presetOrExperienceId to "0"
+curl -X POST "$BASE_URL/platform/api/v1/commands/gcs/controlpresetorexperience" \
+  "${HEADERS[@]}" \
+  -d '{
+    "deviceId": "'$DEVICE_ID'",
+    "sku": "GCS",
+    "tenantId": "'$CUSTOMER_ID'",
+    "presetOrExperienceId": "0"
+  }'
+```
+
+### 8. Start Warmup
+
+```bash
+curl -X POST "$BASE_URL/platform/api/v1/commands/gcs/warmup" \
+  "${HEADERS[@]}" \
+  -d '{
+    "deviceId": "'$DEVICE_ID'",
+    "sku": "GCS",
+    "tenantId": "'$CUSTOMER_ID'"
+  }'
+```
+
+### 9. Get Current Device State
+
+```bash
+curl -X GET "$BASE_URL/devices/api/v1/device-management/gcs-state/gcsadvancestate/$DEVICE_ID" \
+  "${HEADERS[@]}"
+```
+
+### 10. Get Presets List
+
+```bash
+curl -X GET "$BASE_URL/devices/api/v1/device-management/gcs-preset/$DEVICE_ID" \
+  "${HEADERS[@]}"
+```
+
+---
+
+## Hex Command Builder
+
+Use this table to build valve control hex values:
+
+| Temperature | Hex | Flow | Hex | Mode | Hex |
+|-------------|-----|------|-----|------|-----|
+| 95°F (35°C) | `5e` | 25% | `32` | Off | `00` |
+| 100°F (37.7°C) | `79` | 50% | `64` | On | `01` |
+| 104°F (40°C) | `8c` | 75% | `96` | Tub | `02` |
+| 106°F (41.1°C) | `9b` | 100% | `c8` | Stop | `40` |
+| 110°F (43.3°C) | `ad` | | | | |
+| 120°F (48.8°C) | `e8` | | | | |
+
+**Build command:** `[valve_prefix][temp_hex][flow_hex][mode_hex]`
+
+Examples:
+- Primary valve, 100°F, 100% flow, ON: `0179c801`
+- Secondary valve, 106°F, 50% flow, ON: `119b6401`
+- Primary valve, any temp, any flow, OFF: `0179c800`
+
+---
 
 ## Base URL
 
@@ -392,11 +604,24 @@ Returns all presets and experiences configured on the device.
 
 | Field | Description |
 |-------|-------------|
-| `presetId` | Preset identifier ("1"-"5") |
+| `presetId` | Preset identifier ("1"-"16" for presets, "17"+ for experiences) |
 | `isExperience` | "True" for experiences, "False" for presets |
-| `time` | Duration in seconds |
-| `hexString` | Valve settings (3 bytes: prefix, temp, flow) |
+| `time` | Duration in seconds (1800=30min for presets, 2400=40min for experiences) |
+| `hexString` | Valve settings (3 bytes: outlet_bitmask, temp, flow) |
 | `outlets[].value` | Outlet enabled ("0"/"1") |
+| `lastUsedtime` | Unix timestamp of last use |
+
+### Experiences
+
+Built-in experiences (presetId 17+):
+
+| ID | Title |
+|----|-------|
+| 17 | Wake Up |
+| 18 | Shine |
+| 19 | Sleep Simple |
+| 20 | Cool Down |
+| 21 | Warm Up |
 
 ---
 
@@ -630,10 +855,60 @@ From device configuration:
 
 ---
 
+## UI Configuration
+
+**POST** `/platform/api/v1/commands/gcs/writeuiconfiguration`
+
+Updates UI settings (temperature units, haptic feedback, etc.)
+
+**Request:** `AnthemWriteUIConfigurationRequestModel`
+
+---
+
 ## Non-Working Endpoints
 
 - `/platform/api/v1/commands/gcs/writesolostatus` - Returns 404 (use `solowritesystem`)
 - `/platform/api/v1/commands/gcs/writepresetstart` - Returns 404 (use `controlpresetorexperience`)
+
+---
+
+## Mobile Settings (IoT Hub Credentials)
+
+**POST** `/platform/api/v1/mobile/settings`
+
+Registers mobile device and returns IoT Hub credentials for real-time MQTT updates.
+
+**Request:**
+
+```json
+{
+  "tenantId": "cfd22e16-f7be-4038-b7ff-bf08790b8ec4",
+  "mobileDeviceId": "27ec04fee9c378ce",
+  "username": "29NorthWay",
+  "os": "Android",
+  "devicePlatform": "FirebaseCloudMessagingV1",
+  "deviceHandle": "fcm_token_here",
+  "tags": ["FirmwareUpdate"]
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": "27ec04fee9c378ce",
+  "connectionState": "Disconnected",
+  "ioTHub": "prd-hub.azure-devices.net",
+  "ioTHubSettings": {
+    "connectionString": "HostName=prd-hub.azure-devices.net;DeviceId=Android_cfd22e16-f7be-4038-b7ff-bf08790b8ec4_27ec04fee9c378ce;SharedAccessKey=xxx",
+    "deviceId": "Android_cfd22e16-f7be-4038-b7ff-bf08790b8ec4_27ec04fee9c378ce",
+    "ioTHub": "prd-hub.azure-devices.net",
+    "username": "prd-hub.azure-devices.net/Android_cfd22e16-f7be-4038-b7ff-bf08790b8ec4_27ec04fee9c378ce/?api-version=2018-06-30",
+    "password": "SharedAccessSignature sr=prd-hub.azure-devices.net&sig=xxx&se=1799857547",
+    "clientId": "Android_cfd22e16-f7be-4038-b7ff-bf08790b8ec4_27ec04fee9c378ce"
+  }
+}
+```
 
 ---
 
@@ -645,9 +920,37 @@ Real-time status updates use Azure IoT Hub MQTT.
 |---------|-------|
 | Host | `prd-hub.azure-devices.net` |
 | Port | 8883 (TLS) |
-| Protocol | MQTT 5.0 |
+| Protocol | MQTT with Azure IoT Hub SDK |
+| API Version | `2018-06-30` |
 
-The connection string is not returned by the REST API and must be captured via Frida/mitmproxy.
+### Device ID Format
+
+```
+{platform}_{customer_id}_{mobile_device_id}
+```
+
+Example: `Android_cfd22e16-f7be-4038-b7ff-bf08790b8ec4_27ec04fee9c378ce`
+
+### MQTT Topics (Azure IoT Hub)
+
+| Topic | Direction | Purpose |
+|-------|-----------|---------|
+| `devices/{deviceId}/messages/events/` | Device→Cloud | Telemetry |
+| `devices/{deviceId}/messages/devicebound/` | Cloud→Device | Commands |
+| `$iothub/methods/POST/#` | Cloud→Device | Direct methods |
+
+### Direct Methods
+
+| Method | Description |
+|--------|-------------|
+| `ExecuteControlCommand` | Push commands from cloud |
+
+### SAS Token
+
+The password is a SharedAccessSignature with ~1 year expiry:
+- `sr` = resource (IoT Hub hostname)
+- `sig` = signature
+- `se` = expiry (Unix timestamp)
 
 ---
 

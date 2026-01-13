@@ -6,6 +6,7 @@ for traffic capture. Output is saved to dev/output/capture_<timestamp>.log.
 """
 
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -20,6 +21,26 @@ CAPTURE_SCRIPT = SCRIPT_DIR / "frida_capture_hooks.js"
 OUTPUT_DIR = PROJECT_DIR / "dev" / "output"
 
 APP_PACKAGE = "com.kohler.hermoth"
+
+# Find frida executable
+FRIDA_PATHS = [
+    Path.home() / "Library/Python/3.9/bin/frida",
+    Path.home() / "Library/Python/3.11/bin/frida",
+    Path.home() / "Library/Python/3.12/bin/frida",
+]
+
+
+def find_frida():
+    """Find frida executable."""
+    # Check PATH first
+    frida = shutil.which("frida")
+    if frida:
+        return frida
+    # Check common locations
+    for path in FRIDA_PATHS:
+        if path.exists():
+            return str(path)
+    return None
 
 
 def main():
@@ -46,18 +67,24 @@ def main():
     print(f"Capture script: {CAPTURE_SCRIPT}")
     print(f"Output file:    {output_file}")
     print()
+    # Find frida
+    frida_cmd = find_frida()
+    if not frida_cmd:
+        print("ERROR: frida not found. Install with: pip3 install frida-tools")
+        sys.exit(1)
+
     print("Starting app with Frida...")
     print("Press Ctrl+C to stop capture")
     print()
 
     # Build frida command - load both scripts
+    # Note: newer frida (17.x) doesn't have --no-pause, it resumes by default
     cmd = [
-        "frida",
+        frida_cmd,
         "-U",  # USB device
         "-f", APP_PACKAGE,  # Spawn app
         "-l", str(BYPASS_SCRIPT),
         "-l", str(CAPTURE_SCRIPT),
-        "--no-pause",  # Don't pause app at startup
     ]
 
     # Run frida and tee output to file
