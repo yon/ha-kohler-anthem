@@ -10,8 +10,7 @@ from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
 
-from .lib import KohlerAnthemClient, KohlerConfig
-from .lib.exceptions import AuthenticationError, KohlerAnthemError
+from kohler_anthem import KohlerAnthemClient, KohlerConfig, AuthenticationError, KohlerAnthemError
 
 from .const import (
     CONF_API_RESOURCE,

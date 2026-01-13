@@ -10,9 +10,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .lib import KohlerAnthemClient, KohlerConfig
-from .lib.exceptions import KohlerAnthemError
-from .lib.models import DeviceState
+from kohler_anthem import KohlerAnthemClient, KohlerConfig, KohlerAnthemError, DeviceState
 
 from .const import (
     CONF_API_RESOURCE,
