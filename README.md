@@ -24,7 +24,7 @@ This integration uses the unofficial [kohler-anthem](https://pypi.org/project/ko
 
 ## Configuration
 
-The integration requires credentials extracted from the Kohler Konnect app. See the [kohler-anthem library](https://github.com/yon/kohler-anthem) for setup instructions.
+The integration requires credentials extracted from the Kohler Konnect app. See the [Credential Extraction Guide](https://github.com/yon/kohler-anthem/blob/main/credential-extraction/README.md) for detailed instructions on obtaining your `client_id`, `api_resource`, and `apim_key`.
 
 ## Known Limitations
 
