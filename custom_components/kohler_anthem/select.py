@@ -27,6 +27,7 @@ async def async_setup_entry(
     client: KohlerAnthemClient = data["client"]
     coordinator = data["coordinator"]
     devices = data["device_info"]["devices"]
+    tenant_id = data["tenant_id"]
 
     entities = []
     for device in devices:
@@ -52,6 +53,7 @@ async def async_setup_entry(
                 device_name,
                 presets,
                 experiences,
+                tenant_id,
             )
         )
 
@@ -74,12 +76,14 @@ class KohlerPresetSelect(CoordinatorEntity, SelectEntity):
         device_name: str,
         presets: list[Preset],
         experiences: list[Preset],
+        tenant_id: str,
     ) -> None:
         """Initialize the select entity."""
         super().__init__(coordinator)
         self._client = client
         self._config_entry = config_entry
         self._device_id = device_id
+        self._tenant_id = tenant_id
 
         # Combine presets and experiences
         all_items = presets + experiences
@@ -131,7 +135,9 @@ class KohlerPresetSelect(CoordinatorEntity, SelectEntity):
         if option == PRESET_OFF:
             # Stop current preset if one is running
             if current_preset is not None:
-                await self._client.stop_preset(self._device_id, current_preset)
+                await self._client.stop_preset(
+                    self._tenant_id, self._device_id, current_preset
+                )
         else:
             # Start the selected preset by name
             preset_id = self._title_to_id.get(option)
@@ -141,8 +147,12 @@ class KohlerPresetSelect(CoordinatorEntity, SelectEntity):
 
             # Stop current preset first if different
             if current_preset is not None and current_preset != preset_id:
-                await self._client.stop_preset(self._device_id, current_preset)
-            await self._client.start_preset(self._device_id, preset_id)
+                await self._client.stop_preset(
+                    self._tenant_id, self._device_id, current_preset
+                )
+            await self._client.start_preset(
+                self._tenant_id, self._device_id, preset_id
+            )
 
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()

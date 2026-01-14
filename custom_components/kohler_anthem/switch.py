@@ -28,6 +28,7 @@ async def async_setup_entry(
     client: KohlerAnthemClient = data["client"]
     coordinator = data["coordinator"]
     devices = data["device_info"]["devices"]
+    tenant_id = data["tenant_id"]
 
     # Initialize zone sync state (default: True)
     if "zone_sync" not in data:
@@ -48,6 +49,7 @@ async def async_setup_entry(
                 config_entry,
                 device_id,
                 device_name,
+                tenant_id,
             )
         )
         entities.append(
@@ -77,12 +79,14 @@ class KohlerWarmupSwitch(CoordinatorEntity, SwitchEntity):
         config_entry: ConfigEntry,
         device_id: str,
         device_name: str,
+        tenant_id: str,
     ) -> None:
         """Initialize the switch."""
         super().__init__(coordinator)
         self._client = client
         self._config_entry = config_entry
         self._device_id = device_id
+        self._tenant_id = tenant_id
 
         device_name_slug = (device_name or "kohler_anthem").lower().replace(" ", "_")
         self._attr_unique_id = f"{device_id}_warmup"
@@ -111,13 +115,13 @@ class KohlerWarmupSwitch(CoordinatorEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Start warmup mode."""
-        await self._client.start_warmup(self._device_id)
+        await self._client.start_warmup(self._tenant_id, self._device_id)
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Stop warmup mode."""
-        await self._client.stop_warmup(self._device_id)
+        await self._client.stop_warmup(self._tenant_id, self._device_id)
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
 

@@ -52,7 +52,7 @@ async def async_setup_entry(
     client: KohlerAnthemClient = data["client"]
     coordinator = data["coordinator"]
     devices = data["device_info"]["devices"]
-    customer_id = data["customer_id"]
+    tenant_id = data["tenant_id"]
 
     entities = []
     for device in devices:
@@ -82,7 +82,7 @@ async def async_setup_entry(
                             device_name,
                             valve_idx,
                             configured_valves,
-                            customer_id,
+                            tenant_id,
                         )
                     )
                     entities.append(
@@ -95,7 +95,7 @@ async def async_setup_entry(
                             device_name,
                             valve_idx,
                             configured_valves,
-                            customer_id,
+                            tenant_id,
                         )
                     )
 
@@ -135,14 +135,14 @@ class KohlerTemperatureNumber(CoordinatorEntity, NumberEntity):
         device_name: str,
         valve_idx: int,
         all_valve_indices: list[int],
-        customer_id: str,
+        tenant_id: str,
     ) -> None:
         """Initialize the number entity."""
         super().__init__(coordinator)
         self._hass = hass
         self._client = client
         self._config_entry = config_entry
-        self._customer_id = customer_id
+        self._tenant_id = tenant_id
         self._device_id = device_id
         self._valve_idx = valve_idx
         self._all_valve_indices = all_valve_indices
@@ -382,9 +382,9 @@ class KohlerTemperatureNumber(CoordinatorEntity, NumberEntity):
             # All commands go to primary_valve1 - prefix byte routes to correct valve
             valve_control = ValveControlModel(primary_valve1=valve_hex)
             await self._client.control_valve(
+                self._tenant_id,
                 self._device_id,
                 valve_control,
-                tenant_id=self._customer_id,
             )
 
     async def _send_valve_command(
@@ -406,9 +406,9 @@ class KohlerTemperatureNumber(CoordinatorEntity, NumberEntity):
         # All commands go to primary_valve1 - prefix byte routes to correct valve
         valve_control = ValveControlModel(primary_valve1=valve_hex)
         await self._client.control_valve(
+            self._tenant_id,
             self._device_id,
             valve_control,
-            tenant_id=self._customer_id,
         )
 
 
@@ -433,14 +433,14 @@ class KohlerFlowNumber(CoordinatorEntity, NumberEntity):
         device_name: str,
         valve_idx: int,
         all_valve_indices: list[int],
-        customer_id: str,
+        tenant_id: str,
     ) -> None:
         """Initialize the flow number entity."""
         super().__init__(coordinator)
         self._hass = hass
         self._client = client
         self._config_entry = config_entry
-        self._customer_id = customer_id
+        self._tenant_id = tenant_id
         self._device_id = device_id
         self._valve_idx = valve_idx
         self._all_valve_indices = all_valve_indices
@@ -598,9 +598,9 @@ class KohlerFlowNumber(CoordinatorEntity, NumberEntity):
             # All commands go to primary_valve1 - prefix byte routes to correct valve
             valve_control = ValveControlModel(primary_valve1=valve_hex)
             await self._client.control_valve(
+                self._tenant_id,
                 self._device_id,
                 valve_control,
-                tenant_id=self._customer_id,
             )
 
     async def _send_valve_command(
@@ -622,7 +622,7 @@ class KohlerFlowNumber(CoordinatorEntity, NumberEntity):
         # All commands go to primary_valve1 - prefix byte routes to correct valve
         valve_control = ValveControlModel(primary_valve1=valve_hex)
         await self._client.control_valve(
+            self._tenant_id,
             self._device_id,
             valve_control,
-            tenant_id=self._customer_id,
         )

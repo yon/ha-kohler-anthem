@@ -19,7 +19,7 @@ from .const import (
     CONF_API_RESOURCE,
     CONF_APIM_KEY,
     CONF_CLIENT_ID,
-    CONF_CUSTOMER_ID,
+    CONF_TENANT_ID,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
@@ -89,7 +89,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         apim_subscription_key=entry.data[CONF_APIM_KEY],
         api_resource=entry.data[CONF_API_RESOURCE],
     )
-    customer_id = entry.data[CONF_CUSTOMER_ID]
+    tenant_id = entry.data[CONF_TENANT_ID]
 
     client = KohlerAnthemClient(config)
 
@@ -101,10 +101,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Discover devices
     try:
-        customer = await client.get_customer(customer_id)
+        customer = await client.get_customer(tenant_id)
         devices = customer.get_all_devices()
         if not devices:
-            _LOGGER.warning("No devices found for customer %s", customer_id)
+            _LOGGER.warning("No devices found for tenant %s", tenant_id)
     except KohlerAnthemError as err:
         _LOGGER.error("Failed to discover devices: %s", err)
         await client.close()
@@ -146,7 +146,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "client": client,
         "coordinator": coordinator,
         "device_info": device_info,
-        "customer_id": customer_id,
+        "tenant_id": tenant_id,
         "mqtt_client": None,  # Updated below if MQTT connects
         # Local setpoints storage - API returns measured temp, not commanded setpoint
         # Format: {device_id: {valve_idx: {"temp": float, "flow": int}}}
@@ -160,7 +160,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Initialize MQTT client for real-time updates (optional, don't fail if unavailable)
     try:
         _LOGGER.debug("Registering mobile device for IoT Hub credentials...")
-        iot_hub_settings = await client.register_mobile_device(customer_id)
+        iot_hub_settings = await client.register_mobile_device(tenant_id)
 
         if iot_hub_settings and iot_hub_settings.get("ioTHub"):
             mqtt_client = KohlerMqttClient(iot_hub_settings)

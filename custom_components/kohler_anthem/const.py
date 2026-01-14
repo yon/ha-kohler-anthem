@@ -6,7 +6,7 @@ DOMAIN = "kohler_anthem"
 CONF_API_RESOURCE = "api_resource"
 CONF_APIM_KEY = "apim_subscription_key"
 CONF_CLIENT_ID = "client_id"
-CONF_CUSTOMER_ID = "customer_id"
+CONF_TENANT_ID = "tenant_id"
 
 # Defaults
 DEFAULT_SCAN_INTERVAL = 2  # seconds

@@ -17,7 +17,7 @@ from .const import (
     CONF_API_RESOURCE,
     CONF_APIM_KEY,
     CONF_CLIENT_ID,
-    CONF_CUSTOMER_ID,
+    CONF_TENANT_ID,
     DOMAIN,
 )
 from kohler_anthem import KohlerAnthemClient, KohlerConfig
@@ -78,15 +78,15 @@ class KohlerAnthemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         try:
             async with KohlerAnthemClient(config) as client:
-                customer_id = self._get_customer_id(client)
-                if customer_id:
-                    customer = await client.get_customer(customer_id)
+                tenant_id = self._get_tenant_id(client)
+                if tenant_id:
+                    customer = await client.get_customer(tenant_id)
                     devices = customer.get_all_devices()
                     if devices:
                         _LOGGER.info(
-                            "Found %d device(s) for customer %s",
+                            "Found %d device(s) for tenant %s",
                             len(devices),
-                            customer_id,
+                            tenant_id,
                         )
 
                     await self.async_set_unique_id(user_input[CONF_USERNAME].lower())
@@ -96,7 +96,7 @@ class KohlerAnthemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         title=f"Kohler Anthem ({user_input[CONF_USERNAME]})",
                         data={
                             **user_input,
-                            CONF_CUSTOMER_ID: customer_id,
+                            CONF_TENANT_ID: tenant_id,
                         },
                     )
                 else:
@@ -125,8 +125,8 @@ class KohlerAnthemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
-    def _get_customer_id(self, client: KohlerAnthemClient) -> str | None:
-        """Extract customer_id from the auth token."""
+    def _get_tenant_id(self, client: KohlerAnthemClient) -> str | None:
+        """Extract tenant_id from the auth token."""
         if client._auth.token and client._auth.token.access_token:
             try:
                 # JWT is three base64 parts separated by dots
@@ -139,7 +139,7 @@ class KohlerAnthemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         payload += "=" * padding
                     decoded = base64.urlsafe_b64decode(payload)
                     claims = json.loads(decoded)
-                    # The 'oid' claim is the user's object ID (customer_id)
+                    # The 'oid' claim is the user's object ID (tenant_id)
                     return claims.get("oid") or claims.get("sub")
             except Exception as err:
                 _LOGGER.warning("Could not decode access_token: %s", err)
