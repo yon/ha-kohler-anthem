@@ -52,7 +52,7 @@ class KohlerAnthemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=STEP_USER_DATA_SCHEMA,
             description_placeholders={
-                "docs_url": "https://github.com/yon/kohler-anthem-hacs#setup"
+                "docs_url": "https://github.com/yon/ha-kohler-anthem#setup"
             },
         )
 
@@ -121,7 +121,7 @@ class KohlerAnthemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=STEP_USER_DATA_SCHEMA,
             errors=errors,
             description_placeholders={
-                "docs_url": "https://github.com/yon/kohler-anthem-hacs#setup"
+                "docs_url": "https://github.com/yon/ha-kohler-anthem#setup"
             },
         )
 

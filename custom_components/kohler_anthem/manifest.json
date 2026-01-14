@@ -3,10 +3,10 @@
   "name": "Kohler Anthem Digital Shower",
   "codeowners": ["@yon"],
   "config_flow": true,
-  "documentation": "https://github.com/yon/kohler-anthem-hacs",
+  "documentation": "https://github.com/yon/ha-kohler-anthem",
   "integration_type": "device",
   "iot_class": "cloud_push",
-  "issue_tracker": "https://github.com/yon/kohler-anthem-hacs/issues",
+  "issue_tracker": "https://github.com/yon/ha-kohler-anthem/issues",
   "requirements": ["kohler-anthem==0.1.1"],
   "version": "0.2.1"
 }

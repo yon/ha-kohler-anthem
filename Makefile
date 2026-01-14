@@ -19,4 +19,4 @@ endif
 		--title "v$(VERSION)" \
 		--notes "Kohler Anthem HACS Integration v$(VERSION)" \
 		--latest
-	@echo "Release: https://github.com/yon/kohler-anthem-hacs/releases/tag/v$(VERSION)"
+	@echo "Release: https://github.com/yon/ha-kohler-anthem/releases/tag/v$(VERSION)"
