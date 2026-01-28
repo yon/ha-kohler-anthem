@@ -34,7 +34,7 @@ PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.LIGHT,
     Platform.NUMBER,
-    Platform.SELECT,
+    # Platform.SELECT,  # Presets disabled - API accepts commands but device doesn't respond
     Platform.SENSOR,
     Platform.SWITCH,
 ]

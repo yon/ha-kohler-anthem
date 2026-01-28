@@ -135,9 +135,7 @@ class KohlerPresetSelect(CoordinatorEntity, SelectEntity):
         if option == PRESET_OFF:
             # Stop current preset if one is running
             if current_preset is not None:
-                await self._client.stop_preset(
-                    self._tenant_id, self._device_id, current_preset
-                )
+                await self._client.stop_preset(self._tenant_id, self._device_id)
         else:
             # Start the selected preset by name
             preset_id = self._title_to_id.get(option)
@@ -147,11 +145,15 @@ class KohlerPresetSelect(CoordinatorEntity, SelectEntity):
 
             # Stop current preset first if different
             if current_preset is not None and current_preset != preset_id:
-                await self._client.stop_preset(
-                    self._tenant_id, self._device_id, current_preset
-                )
+                await self._client.stop_preset(self._tenant_id, self._device_id)
+
+            # Get valve_details from the preset for valve control
+            preset = self._presets.get(preset_id)
+            valve_details = preset.valve_details if preset else None
+
             await self._client.start_preset(
-                self._tenant_id, self._device_id, preset_id
+                self._tenant_id, self._device_id, preset_id,
+                valve_details=valve_details,
             )
 
         self.async_write_ha_state()
