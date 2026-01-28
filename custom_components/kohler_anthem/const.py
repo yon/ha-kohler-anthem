@@ -18,8 +18,8 @@ TEMP_MIN_F = 60.0
 
 # Celsius constants (for API which uses Celsius) - rounded to 0.5°C
 TEMP_DEFAULT_CELSIUS = 37.5  # ~99.5°F
-TEMP_MAX_CELSIUS = 49.0      # ~120°F
-TEMP_MIN_CELSIUS = 15.5      # ~60°F
+TEMP_MAX_CELSIUS = 49.0  # ~120°F
+TEMP_MIN_CELSIUS = 15.5  # ~60°F
 
 # Flow limits
 FLOW_DEFAULT_PERCENT = 100

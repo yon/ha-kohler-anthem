@@ -1,4 +1,5 @@
 """The Kohler Anthem Digital Shower integration."""
+
 from __future__ import annotations
 
 import asyncio
@@ -191,7 +192,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         else:
             _LOGGER.warning("No IoT Hub settings received, using polling only")
     except Exception as err:
-        _LOGGER.warning("Failed to set up IoT Hub connection: %s (using polling only)", err)
+        _LOGGER.warning(
+            "Failed to set up IoT Hub connection: %s (using polling only)", err
+        )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

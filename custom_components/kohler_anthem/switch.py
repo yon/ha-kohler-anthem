@@ -1,4 +1,5 @@
 """Switch platform for Kohler Anthem shower."""
+
 from __future__ import annotations
 
 import logging

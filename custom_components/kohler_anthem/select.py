@@ -1,4 +1,5 @@
 """Select platform for Kohler Anthem shower presets."""
+
 from __future__ import annotations
 
 import logging
@@ -90,7 +91,9 @@ class KohlerPresetSelect(CoordinatorEntity, SelectEntity):
         self._presets = {p.id: p for p in all_items}
 
         # Build options: "Off" + preset names + experience names
-        self._attr_options = [PRESET_OFF] + [p.title for p in presets] + [p.title for p in experiences]
+        self._attr_options = (
+            [PRESET_OFF] + [p.title for p in presets] + [p.title for p in experiences]
+        )
 
         # Map title to ID for selection
         self._title_to_id = {p.title: p.id for p in all_items}
@@ -152,7 +155,9 @@ class KohlerPresetSelect(CoordinatorEntity, SelectEntity):
             valve_details = preset.valve_details if preset else None
 
             await self._client.start_preset(
-                self._tenant_id, self._device_id, preset_id,
+                self._tenant_id,
+                self._device_id,
+                preset_id,
                 valve_details=valve_details,
             )
 

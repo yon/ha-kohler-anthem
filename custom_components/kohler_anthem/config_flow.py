@@ -1,4 +1,5 @@
 """Config flow for Kohler Anthem integration."""
+
 from __future__ import annotations
 
 import base64
@@ -56,9 +57,7 @@ class KohlerAnthemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
-    async def async_step_import(
-        self, import_data: dict[str, Any]
-    ) -> FlowResult:
+    async def async_step_import(self, import_data: dict[str, Any]) -> FlowResult:
         """Handle import from YAML configuration."""
         return await self._async_validate_and_create(import_data)
 

@@ -1,4 +1,5 @@
 """Sensor platform for Kohler Anthem shower."""
+
 from __future__ import annotations
 
 import logging
@@ -9,7 +10,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, PERCENTAGE, UnitOfTemperature, UnitOfVolume
+from homeassistant.const import (
+    EntityCategory,
+    PERCENTAGE,
+    UnitOfTemperature,
+    UnitOfVolume,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -37,10 +43,16 @@ async def async_setup_entry(
         device_name = device.logical_name
 
         # Device-level sensors
-        entities.extend([
-            KohlerConnectionSensor(coordinator, config_entry, device_id, device_name),
-            KohlerWaterVolumeSensor(coordinator, config_entry, device_id, device_name),
-        ])
+        entities.extend(
+            [
+                KohlerConnectionSensor(
+                    coordinator, config_entry, device_id, device_name
+                ),
+                KohlerWaterVolumeSensor(
+                    coordinator, config_entry, device_id, device_name
+                ),
+            ]
+        )
 
         # Per-valve sensors (temperature and flow)
         if coordinator.data:
@@ -49,7 +61,8 @@ async def async_setup_entry(
             if device_state and device_state.setting:
                 # Get configured valve indices
                 configured_valves = [
-                    idx for idx, vs in enumerate(device_state.setting.valve_settings)
+                    idx
+                    for idx, vs in enumerate(device_state.setting.valve_settings)
                     if vs.outlet_configurations
                 ]
                 for valve_idx in configured_valves:
@@ -82,7 +95,9 @@ class KohlerSensorBase(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._device_id = device_id
-        self._device_name_slug = (device_name or "kohler_anthem").lower().replace(" ", "_")
+        self._device_name_slug = (
+            (device_name or "kohler_anthem").lower().replace(" ", "_")
+        )
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, device_id)},
@@ -117,7 +132,9 @@ class KohlerConnectionSensor(KohlerSensorBase):
         """Initialize the sensor."""
         super().__init__(coordinator, config_entry, device_id, device_name)
         self._attr_unique_id = f"{device_id}_connection"
-        self._attr_suggested_object_id = f"kohler_anthem_{self._device_name_slug}_connection"
+        self._attr_suggested_object_id = (
+            f"kohler_anthem_{self._device_name_slug}_connection"
+        )
 
     @property
     def native_value(self) -> str:
@@ -147,7 +164,9 @@ class KohlerWaterVolumeSensor(KohlerSensorBase):
         """Initialize the sensor."""
         super().__init__(coordinator, config_entry, device_id, device_name)
         self._attr_unique_id = f"{device_id}_water_volume"
-        self._attr_suggested_object_id = f"kohler_anthem_{self._device_name_slug}_water_volume"
+        self._attr_suggested_object_id = (
+            f"kohler_anthem_{self._device_name_slug}_water_volume"
+        )
 
     @property
     def native_value(self) -> int | None:
@@ -175,7 +194,9 @@ class KohlerValveSensorBase(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self._device_id = device_id
         self._valve_idx = valve_idx
-        self._device_name_slug = (device_name or "kohler_anthem").lower().replace(" ", "_")
+        self._device_name_slug = (
+            (device_name or "kohler_anthem").lower().replace(" ", "_")
+        )
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, device_id)},
@@ -223,7 +244,9 @@ class KohlerTemperatureSensor(KohlerValveSensorBase):
         zone_num = valve_idx + 1
         self._attr_unique_id = f"{device_id}_zone{zone_num}_temperature_current"
         self._attr_name = f"Zone {zone_num} Temperature"
-        self._attr_suggested_object_id = f"kohler_anthem_{self._device_name_slug}_zone_{zone_num}_temperature"
+        self._attr_suggested_object_id = (
+            f"kohler_anthem_{self._device_name_slug}_zone_{zone_num}_temperature"
+        )
 
     @property
     def native_value(self) -> float | None:
@@ -263,7 +286,9 @@ class KohlerFlowSensor(KohlerValveSensorBase):
         zone_num = valve_idx + 1
         self._attr_unique_id = f"{device_id}_zone{zone_num}_flow_current"
         self._attr_name = f"Zone {zone_num} Flow"
-        self._attr_suggested_object_id = f"kohler_anthem_{self._device_name_slug}_zone_{zone_num}_flow"
+        self._attr_suggested_object_id = (
+            f"kohler_anthem_{self._device_name_slug}_zone_{zone_num}_flow"
+        )
 
     @property
     def native_value(self) -> int | None:

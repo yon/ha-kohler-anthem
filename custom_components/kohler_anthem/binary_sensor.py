@@ -1,4 +1,5 @@
 """Binary sensor platform for Kohler Anthem shower."""
+
 from __future__ import annotations
 
 import logging
@@ -92,7 +93,9 @@ class KohlerBinarySensorBase(CoordinatorEntity, BinarySensorEntity):
         super().__init__(coordinator)
         self._config_entry = config_entry
         self._device_id = device_id
-        self._device_name_slug = (device_name or "kohler_anthem").lower().replace(" ", "_")
+        self._device_name_slug = (
+            (device_name or "kohler_anthem").lower().replace(" ", "_")
+        )
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, device_id)},
@@ -127,7 +130,9 @@ class KohlerRunningBinarySensor(KohlerBinarySensorBase):
         """Initialize the running sensor."""
         super().__init__(coordinator, config_entry, device_id, device_name)
         self._attr_unique_id = f"{device_id}_running"
-        self._attr_suggested_object_id = f"kohler_anthem_{self._device_name_slug}_running"
+        self._attr_suggested_object_id = (
+            f"kohler_anthem_{self._device_name_slug}_running"
+        )
 
     @property
     def is_on(self) -> bool:
@@ -153,7 +158,9 @@ class KohlerWarmingUpBinarySensor(KohlerBinarySensorBase):
         """Initialize the warming up sensor."""
         super().__init__(coordinator, config_entry, device_id, device_name)
         self._attr_unique_id = f"{device_id}_warming_up"
-        self._attr_suggested_object_id = f"kohler_anthem_{self._device_name_slug}_warming_up"
+        self._attr_suggested_object_id = (
+            f"kohler_anthem_{self._device_name_slug}_warming_up"
+        )
 
     @property
     def is_on(self) -> bool:
@@ -183,7 +190,9 @@ class KohlerValveErrorBinarySensor(KohlerBinarySensorBase):
         zone_num = valve_idx + 1
         self._attr_unique_id = f"{device_id}_zone{zone_num}_error"
         self._attr_name = f"Zone {zone_num} Error"
-        self._attr_suggested_object_id = f"kohler_anthem_{self._device_name_slug}_zone_{zone_num}_error"
+        self._attr_suggested_object_id = (
+            f"kohler_anthem_{self._device_name_slug}_zone_{zone_num}_error"
+        )
 
     @property
     def is_on(self) -> bool:

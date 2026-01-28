@@ -1,4 +1,5 @@
 """Light platform for Kohler Anthem shower outlets."""
+
 from __future__ import annotations
 
 import logging
@@ -44,7 +45,7 @@ VALVE_PREFIX_MAP = {
 
 # Map outlet index to valve mode
 OUTLET_MODE_MAP = {
-    0: ValveMode.SHOWER,      # First outlet
+    0: ValveMode.SHOWER,  # First outlet
     1: ValveMode.TUB_FILLER,  # Second outlet
 }
 
@@ -83,7 +84,8 @@ async def async_setup_entry(
             if device_state and device_state.setting:
                 # Collect all configured valve indices
                 configured_valves = [
-                    idx for idx, vs in enumerate(device_state.setting.valve_settings)
+                    idx
+                    for idx, vs in enumerate(device_state.setting.valve_settings)
                     if vs.outlet_configurations
                 ]
 
@@ -150,7 +152,9 @@ class KohlerOutletLight(CoordinatorEntity, LightEntity):
         type_name = OUTLET_TYPE_NAMES.get(outlet_type, f"outlet{outlet_type}")
         type_suffix = type_name.replace(" ", "_").lower()
 
-        self._attr_unique_id = f"{device_id}_zone{zone_num}_outlet{outlet_num}_{type_suffix}"
+        self._attr_unique_id = (
+            f"{device_id}_zone{zone_num}_outlet{outlet_num}_{type_suffix}"
+        )
         self._attr_name = f"Zone {zone_num} Outlet {outlet_num} ({type_name.title()})"
         self._attr_icon = OUTLET_TYPE_ICONS.get(outlet_type, "mdi:water")
         device_name_slug = (device_name or "kohler_anthem").lower().replace(" ", "_")
@@ -324,7 +328,9 @@ class KohlerOutletLight(CoordinatorEntity, LightEntity):
             return ValveMode.TUB_FILLER
         return ValveMode.OFF
 
-    def _get_local_outlet_state_for_valve(self, valve_idx: int, outlet_idx: int) -> bool | None:
+    def _get_local_outlet_state_for_valve(
+        self, valve_idx: int, outlet_idx: int
+    ) -> bool | None:
         """Get locally stored outlet state for any valve."""
         data = self._hass.data[DOMAIN][self._config_entry.entry_id]
         outlet_states = data.get("outlet_states", {})
@@ -359,7 +365,11 @@ class KohlerOutletLight(CoordinatorEntity, LightEntity):
 
             _LOGGER.debug(
                 "Synced flow for valve %d: temp=%.1f, flow=%d, mode=%s, hex=%s",
-                valve_idx, temperature, flow, mode, valve_hex
+                valve_idx,
+                temperature,
+                flow,
+                mode,
+                valve_hex,
             )
 
             # All commands go to primary_valve1 - prefix byte routes to correct valve
@@ -400,7 +410,12 @@ class KohlerOutletLight(CoordinatorEntity, LightEntity):
 
         _LOGGER.debug(
             "Outlet command: valve=%d, on=%s, outlet_idx=%d, mode=%s, flow=%d, hex=%s",
-            self._valve_idx, on, self._outlet_idx, mode, actual_flow, valve_hex
+            self._valve_idx,
+            on,
+            self._outlet_idx,
+            mode,
+            actual_flow,
+            valve_hex,
         )
 
         # All commands go to primary_valve1 - prefix byte routes to correct valve
@@ -442,7 +457,10 @@ class KohlerOutletLight(CoordinatorEntity, LightEntity):
 
         _LOGGER.debug(
             "Mode calc: outlet_idx=%d, turning_on=%s, out1=%s, out2=%s",
-            self._outlet_idx, turning_on, out1_on, out2_on
+            self._outlet_idx,
+            turning_on,
+            out1_on,
+            out2_on,
         )
 
         if out1_on and out2_on:

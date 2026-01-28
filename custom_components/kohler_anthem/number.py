@@ -1,8 +1,8 @@
 """Number platform for Kohler Anthem shower temperature control."""
+
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
@@ -16,7 +16,6 @@ from .const import (
     DOMAIN,
     FLOW_DEFAULT_PERCENT,
     TEMP_DEFAULT_CELSIUS,
-    TEMP_DEFAULT_F,
     TEMP_MAX_CELSIUS,
     TEMP_MAX_F,
     TEMP_MIN_CELSIUS,
@@ -66,7 +65,8 @@ async def async_setup_entry(
             if device_state and device_state.setting:
                 # Get configured valve indices from settings
                 configured_valves = [
-                    idx for idx, vs in enumerate(device_state.setting.valve_settings)
+                    idx
+                    for idx, vs in enumerate(device_state.setting.valve_settings)
                     if vs.outlet_configurations
                 ]
 
@@ -148,7 +148,9 @@ class KohlerTemperatureNumber(CoordinatorEntity, NumberEntity):
         self._all_valve_indices = all_valve_indices
 
         # Detect user's preferred temperature unit
-        self._use_fahrenheit = hass.config.units.temperature_unit == UnitOfTemperature.FAHRENHEIT
+        self._use_fahrenheit = (
+            hass.config.units.temperature_unit == UnitOfTemperature.FAHRENHEIT
+        )
 
         # Set limits based on user's unit preference - always 0.5 degree steps
         if self._use_fahrenheit:
@@ -264,12 +266,13 @@ class KohlerTemperatureNumber(CoordinatorEntity, NumberEntity):
         # Convert HSL to hex (saturation=100%, lightness=50%)
         return self._hsl_to_hex(hue, 1.0, 0.5)
 
-    def _hsl_to_hex(self, h: float, s: float, l: float) -> str:
+    def _hsl_to_hex(self, h: float, s: float, lightness: float) -> str:
         """Convert HSL to hex color."""
         import colorsys
+
         h_normalized = h / 360.0
-        r, g, b = colorsys.hls_to_rgb(h_normalized, l, s)
-        return f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
+        r, g, b = colorsys.hls_to_rgb(h_normalized, lightness, s)
+        return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
 
     async def async_set_native_value(self, value: float) -> None:
         """Set new target temperature without changing outlet state."""
@@ -294,14 +297,20 @@ class KohlerTemperatureNumber(CoordinatorEntity, NumberEntity):
 
         _LOGGER.debug(
             "Setting temperature: zone_sync=%s, temp=%.1f, flow=%d, mode=%s, all_valves=%s",
-            self._zone_sync_enabled, temperature, flow, current_mode, self._all_valve_indices
+            self._zone_sync_enabled,
+            temperature,
+            flow,
+            current_mode,
+            self._all_valve_indices,
         )
 
         # Send to all zones if sync enabled, otherwise just this zone
         if self._zone_sync_enabled:
             await self._send_synced_command(temperature, flow, current_mode)
         else:
-            await self._send_valve_command(self._valve_idx, temperature, flow, current_mode)
+            await self._send_valve_command(
+                self._valve_idx, temperature, flow, current_mode
+            )
 
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
@@ -376,7 +385,11 @@ class KohlerTemperatureNumber(CoordinatorEntity, NumberEntity):
             )
             _LOGGER.debug(
                 "Synced command for valve %d: temp=%.1f, flow=%d, mode=%s, hex=%s",
-                valve_idx, temperature, flow, valve_mode, valve_hex
+                valve_idx,
+                temperature,
+                flow,
+                valve_mode,
+                valve_hex,
             )
 
             # All commands go to primary_valve1 - prefix byte routes to correct valve
@@ -514,14 +527,20 @@ class KohlerFlowNumber(CoordinatorEntity, NumberEntity):
 
         _LOGGER.debug(
             "Setting flow: zone_sync=%s, temp=%.1f, flow=%d, mode=%s, all_valves=%s",
-            self._zone_sync_enabled, temperature, flow, current_mode, self._all_valve_indices
+            self._zone_sync_enabled,
+            temperature,
+            flow,
+            current_mode,
+            self._all_valve_indices,
         )
 
         # Send to all zones if sync enabled, otherwise just this zone
         if self._zone_sync_enabled:
             await self._send_synced_command(temperature, flow, current_mode)
         else:
-            await self._send_valve_command(self._valve_idx, temperature, flow, current_mode)
+            await self._send_valve_command(
+                self._valve_idx, temperature, flow, current_mode
+            )
 
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
