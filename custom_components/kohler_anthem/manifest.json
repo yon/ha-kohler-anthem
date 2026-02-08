@@ -7,6 +7,6 @@
   "integration_type": "device",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/yon/ha-kohler-anthem/issues",
-  "requirements": ["kohler-anthem==0.1.1"],
-  "version": "0.2.1"
+  "requirements": ["kohler-anthem==0.1.4"],
+  "version": "0.2.2"
 }
