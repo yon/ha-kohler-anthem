@@ -2,32 +2,50 @@
   "config": {
     "step": {
       "user": {
-        "title": "Kohler Anthem Setup",
-        "description": "Enter your Kohler Konnect credentials and API keys. See [setup docs]({docs_url}) for instructions.",
+        "title": "Kohler Anthem setup — credentials",
+        "description": "Enter the API credentials extracted from the Kohler Konnect app. See [setup docs]({docs_url}) for instructions. After this step you'll be asked to sign in via your browser.",
         "data": {
-          "username": "Email",
-          "password": "Password",
           "client_id": "Client ID",
           "apim_subscription_key": "APIM Subscription Key",
           "api_resource": "API Resource"
         },
         "data_description": {
-          "username": "Your Kohler Konnect account email",
-          "password": "Your Kohler Konnect account password",
           "client_id": "OAuth client ID (from APK)",
           "apim_subscription_key": "Azure API Management key (from mitmproxy)",
           "api_resource": "API resource identifier (from APK)"
         }
+      },
+      "authorize": {
+        "title": "Kohler Anthem setup — sign in",
+        "description": "Open this URL in any browser and sign in:\n\n[Sign in to Kohler]({authorize_url})\n\nAfter signing in, your browser will try to open `{redirect_uri}` (a custom URL the official mobile app uses). The browser won't be able to follow it — it'll show an error page or a 'Open in app?' prompt. **Copy the full URL** (it should contain `?code=...&state=...`) and paste it below.",
+        "data": {
+          "redirect_url": "Redirect URL"
+        },
+        "data_description": {
+          "redirect_url": "The full URL your browser ends up at after signing in (starts with `msauth.com.kohler.hermoth://auth?code=...`)."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Kohler Anthem — sign in again",
+        "description": "Your refresh token has expired or been revoked. Open this URL in any browser and sign in:\n\n[Sign in to Kohler]({authorize_url})\n\nAfter signing in, paste the full redirect URL below.",
+        "data": {
+          "redirect_url": "Redirect URL"
+        }
       }
     },
     "error": {
-      "invalid_auth": "Invalid authentication credentials",
-      "cannot_connect": "Failed to connect to Kohler API",
-      "cannot_discover": "Could not discover devices. Check your credentials.",
-      "unknown": "An unexpected error occurred"
+      "invalid_redirect": "That URL didn't include `code` and `state`. Make sure you copied the entire address bar contents.",
+      "state_mismatch": "Security check failed (`state` mismatch). Restart the flow and sign in again.",
+      "token_exchange_failed": "Kohler rejected the authorization code. {error_detail}",
+      "cannot_connect": "Could not reach the Kohler token endpoint. Check your network."
     },
     "abort": {
-      "already_configured": "This account is already configured"
+      "already_configured": "This account is already configured.",
+      "cannot_discover": "Sign-in succeeded but device discovery failed. Check the APIM key and API resource.",
+      "manual_oauth_required": "Kohler now requires interactive sign-in. Please add the integration via the UI — YAML configuration is no longer supported.",
+      "missing_tenant_id": "The signed-in token did not contain a tenant id (`oid`/`sub`). This shouldn't happen — please open an issue.",
+      "reauth_successful": "Re-authentication successful.",
+      "reauth_unknown_entry": "Reauth flow could not find the original config entry."
     }
   }
 }

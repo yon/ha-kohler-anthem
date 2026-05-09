@@ -7,6 +7,15 @@ CONF_API_RESOURCE = "api_resource"
 CONF_APIM_KEY = "apim_subscription_key"
 CONF_CLIENT_ID = "client_id"
 CONF_TENANT_ID = "tenant_id"
+# OAuth additions (B2C_1A_signin Authorization Code + PKCE)
+CONF_TOKEN = "token"
+CONF_REDIRECT_URL = "redirect_url"
+
+# OAuth — same custom-scheme redirect that the official Kohler mobile apps use,
+# so it's already registered against the app. The user's HA browser can't
+# follow the custom scheme, which is the point: the browser shows the URL
+# and the user pastes it back into HA.
+OAUTH_REDIRECT_URI = "msauth.com.kohler.hermoth://auth"
 
 # Defaults
 DEFAULT_SCAN_INTERVAL = 2  # seconds

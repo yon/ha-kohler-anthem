@@ -1,11 +1,12 @@
 SHELL := /bin/bash
-.PHONY: help venv lint format check clean release bump-patch bump-minor bump-major
+.PHONY: help venv lint format test check clean release bump-patch bump-minor bump-major
 
 COMPONENT_DIR := custom_components/kohler_anthem
 MANIFEST := $(COMPONENT_DIR)/manifest.json
 VERSION := $(shell python3 -c "import json; print(json.load(open('$(MANIFEST)'))['version'])")
 VENV := .venv
 RUFF := $(VENV)/bin/ruff
+PYTHON := $(VENV)/bin/python3
 
 help:
 	@echo "Usage: make <target>"
@@ -14,7 +15,8 @@ help:
 	@echo "  venv        Create venv and install dev tools"
 	@echo "  lint        Run ruff linter"
 	@echo "  format      Format code with ruff"
-	@echo "  check       Run all checks (lint)"
+	@echo "  test        Run pytest unit tests"
+	@echo "  check       Run all checks (lint + test)"
 	@echo "  clean       Remove cache files"
 	@echo ""
 	@echo "Versioning:"
@@ -29,19 +31,22 @@ help:
 
 $(VENV)/bin/ruff:
 	@python3 -m venv $(VENV)
-	@$(VENV)/bin/pip install --quiet ruff
-	@echo "venv created with ruff installed"
+	@$(VENV)/bin/pip install --quiet ruff pytest
+	@echo "venv created with ruff and pytest installed"
 
 venv: $(VENV)/bin/ruff
 
 lint: $(VENV)/bin/ruff
-	@$(RUFF) check $(COMPONENT_DIR)
+	@$(RUFF) check $(COMPONENT_DIR) tests
 
 format: $(VENV)/bin/ruff
-	@$(RUFF) format $(COMPONENT_DIR)
-	@$(RUFF) check --fix $(COMPONENT_DIR)
+	@$(RUFF) format $(COMPONENT_DIR) tests
+	@$(RUFF) check --fix $(COMPONENT_DIR) tests
 
-check: lint
+test: $(VENV)/bin/ruff
+	@$(PYTHON) -m pytest tests/ -q
+
+check: lint test
 
 clean:
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
