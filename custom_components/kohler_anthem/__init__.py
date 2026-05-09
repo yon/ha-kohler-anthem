@@ -4,30 +4,36 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import asdict
 from datetime import timedelta
 from typing import Any
 
-import voluptuous as vol
-
-from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_PASSWORD, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.typing import ConfigType
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from kohler_anthem import (
+    KohlerAnthemClient,
+    KohlerAnthemError,
+    KohlerOAuthConfig,
+    ReauthRequired,
+    TokenInfo,
+)
+from kohler_anthem.models import DeviceState
+from kohler_anthem.mqtt import KohlerMqttClient
 
 from .const import (
     CONF_API_RESOURCE,
     CONF_APIM_KEY,
     CONF_CLIENT_ID,
     CONF_TENANT_ID,
+    CONF_TOKEN,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    OAUTH_REDIRECT_URI,
 )
-from kohler_anthem import KohlerAnthemClient, KohlerConfig
-from kohler_anthem.exceptions import KohlerAnthemError
-from kohler_anthem.models import DeviceState
-from kohler_anthem.mqtt import KohlerMqttClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,78 +46,90 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
 ]
 
-CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.Schema(
-            {
-                vol.Required(CONF_USERNAME): cv.string,
-                vol.Required(CONF_PASSWORD): cv.string,
-                vol.Required(CONF_CLIENT_ID): cv.string,
-                vol.Required(CONF_APIM_KEY): cv.string,
-                vol.Required(CONF_API_RESOURCE): cv.string,
-            }
+
+class _ConfigEntryTokenStore:
+    """TokenStore that persists into ``entry.data[CONF_TOKEN]``.
+
+    Keeps the refresh token alive across HA restarts. Updates go through
+    ``hass.config_entries.async_update_entry`` so the storage is durable
+    and survives reloads.
+    """
+
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        self._hass = hass
+        self._entry = entry
+
+    async def load(self) -> TokenInfo | None:
+        token_data = self._entry.data.get(CONF_TOKEN)
+        if not token_data:
+            return None
+        return TokenInfo(**token_data)
+
+    async def save(self, token: TokenInfo) -> None:
+        self._hass.config_entries.async_update_entry(
+            self._entry,
+            data={**self._entry.data, CONF_TOKEN: asdict(token)},
         )
-    },
-    extra=vol.ALLOW_EXTRA,
-)
 
 
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up Kohler Anthem from YAML configuration."""
-    if DOMAIN not in config:
-        return True
+async def async_setup(hass: HomeAssistant, _config: dict[str, Any]) -> bool:
+    """Setup is config-flow-only — YAML import is no longer supported.
 
-    conf = config[DOMAIN]
-
-    # Check if already configured via config entry
-    for entry in hass.config_entries.async_entries(DOMAIN):
-        if entry.data.get(CONF_USERNAME) == conf[CONF_USERNAME]:
-            _LOGGER.debug("Kohler Anthem already configured via config entry")
-            return True
-
-    # Import YAML config as a config entry
-    hass.async_create_task(
-        hass.config_entries.flow.async_init(
-            DOMAIN,
-            context={"source": SOURCE_IMPORT},
-            data=conf,
-        )
-    )
-
+    Existing YAML configs (which carried a password) cannot be auto-imported
+    because the new flow requires interactive OAuth sign-in. Users on the old
+    path are migrated via reauth at config-entry setup time.
+    """
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Kohler Anthem from a config entry."""
-    config = KohlerConfig(
-        username=entry.data[CONF_USERNAME],
-        password=entry.data[CONF_PASSWORD],
+    # Migrate legacy ROPC entries (presence of CONF_PASSWORD): trigger reauth
+    # to walk the user through OAuth sign-in. The unique_id (username) is
+    # preserved across the migration so entities stay attached.
+    if CONF_PASSWORD in entry.data and CONF_TOKEN not in entry.data:
+        _LOGGER.warning(
+            "Legacy ROPC config entry detected for %s — starting OAuth migration",
+            entry.title,
+        )
+        raise ConfigEntryAuthFailed(
+            "Kohler now requires OAuth (B2C_1A_signin). Sign in again to migrate."
+        )
+
+    config = KohlerOAuthConfig(
         client_id=entry.data[CONF_CLIENT_ID],
         apim_subscription_key=entry.data[CONF_APIM_KEY],
         api_resource=entry.data[CONF_API_RESOURCE],
+        redirect_uri=OAUTH_REDIRECT_URI,
     )
     tenant_id = entry.data[CONF_TENANT_ID]
+    token_store = _ConfigEntryTokenStore(hass, entry)
 
-    client = KohlerAnthemClient(config)
+    client = KohlerAnthemClient(config, token_store=token_store)
 
     try:
         await client.connect()
+    except ReauthRequired as err:
+        _LOGGER.warning("OAuth refresh token rejected, prompting reauth: %s", err)
+        raise ConfigEntryAuthFailed(str(err)) from err
     except KohlerAnthemError as err:
         _LOGGER.error("Failed to connect to Kohler API: %s", err)
         return False
 
-    # Discover devices
     try:
         customer = await client.get_customer(tenant_id)
         devices = customer.get_all_devices()
         if not devices:
             _LOGGER.warning("No devices found for tenant %s", tenant_id)
+    except ReauthRequired as err:
+        _LOGGER.warning("OAuth refresh token rejected during discovery: %s", err)
+        await client.close()
+        raise ConfigEntryAuthFailed(str(err)) from err
     except KohlerAnthemError as err:
         _LOGGER.error("Failed to discover devices: %s", err)
         await client.close()
         return False
 
-    # Store device info
     device_info = {
         "customer": customer,
         "devices": devices,
@@ -128,6 +146,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "states": states,
                 "devices": devices,
             }
+        except ReauthRequired as err:
+            raise ConfigEntryAuthFailed(str(err)) from err
         except KohlerAnthemError as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
@@ -141,14 +161,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await coordinator.async_config_entry_first_refresh()
 
-    # Set up data storage first (needed by MQTT callback)
     hass.data.setdefault(DOMAIN, {})
     entry_data = {
         "client": client,
         "coordinator": coordinator,
         "device_info": device_info,
         "tenant_id": tenant_id,
-        "mqtt_client": None,  # Updated below if MQTT connects
+        "mqtt_client": None,
         # Local setpoints storage - API returns measured temp, not commanded setpoint
         # Format: {device_id: {valve_idx: {"temp": float, "flow": int}}}
         "setpoints": {},
@@ -158,7 +177,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     }
     hass.data[DOMAIN][entry.entry_id] = entry_data
 
-    # Initialize MQTT client for real-time updates (optional, don't fail if unavailable)
     try:
         _LOGGER.debug("Registering mobile device for IoT Hub credentials...")
         iot_hub_settings = await client.register_mobile_device(tenant_id)
@@ -168,18 +186,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
             async def delayed_refresh() -> None:
                 """Wait a moment then refresh coordinator."""
-                # Give the device time to execute the command and report new state
                 await asyncio.sleep(1.0)
                 await coordinator.async_request_refresh()
 
             def on_mqtt_message(topic: str, payload: bytes) -> None:
                 """Handle incoming MQTT messages and trigger coordinator refresh."""
                 _LOGGER.debug("MQTT message received, refreshing state")
-                # Clear local state - external change detected
-                # This forces entities to read from API state
                 entry_data["outlet_states"] = {}
                 entry_data["setpoints"] = {}
-                # Schedule a delayed coordinator refresh
                 hass.async_create_task(delayed_refresh())
 
             mqtt_client.add_callback(on_mqtt_message)
@@ -191,7 +205,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 _LOGGER.warning("Failed to connect to IoT Hub, using polling only")
         else:
             _LOGGER.warning("No IoT Hub settings received, using polling only")
-    except Exception as err:
+    except Exception as err:  # noqa: BLE001 — IoT Hub is best-effort
         _LOGGER.warning(
             "Failed to set up IoT Hub connection: %s (using polling only)", err
         )
@@ -205,13 +219,21 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         data = hass.data[DOMAIN].pop(entry.entry_id)
-
-        # Disconnect MQTT client
         if mqtt_client := data.get("mqtt_client"):
             await mqtt_client.disconnect()
-
-        # Close API client
         if client := data.get("client"):
             await client.close()
-
     return unload_ok
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate config entry from VERSION 1 (ROPC) to VERSION 2 (OAuth).
+
+    The actual credential migration happens via reauth in async_setup_entry —
+    here we just stamp the version so HA stops calling us. The reauth flow
+    strips CONF_PASSWORD and adds CONF_TOKEN.
+    """
+    if entry.version == 1:
+        new_data = {k: v for k, v in entry.data.items() if k != CONF_PASSWORD}
+        hass.config_entries.async_update_entry(entry, data=new_data, version=2)
+    return True
