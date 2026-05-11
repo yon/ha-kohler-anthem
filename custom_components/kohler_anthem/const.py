@@ -7,6 +7,8 @@ CONF_API_RESOURCE = "api_resource"
 CONF_APIM_KEY = "apim_subscription_key"
 CONF_CLIENT_ID = "client_id"
 CONF_TENANT_ID = "tenant_id"
+# Required for /commands/* writes. Seeded by `python -m kohler_anthem.b2c_signin`.
+CONF_B2C_REFRESH_TOKEN = "b2c_refresh_token"
 
 # Defaults
 DEFAULT_SCAN_INTERVAL = 2  # seconds

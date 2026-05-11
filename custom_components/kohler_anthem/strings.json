@@ -3,31 +3,42 @@
     "step": {
       "user": {
         "title": "Kohler Anthem Setup",
-        "description": "Enter your Kohler Konnect credentials and API keys. See [setup docs]({docs_url}) for instructions.",
+        "description": "Enter your Kohler Konnect credentials and API keys. See [setup docs]({docs_url}) for instructions, including how to obtain a B2C refresh token (required for outlet/valve writes).",
         "data": {
           "username": "Email",
           "password": "Password",
           "client_id": "Client ID",
           "apim_subscription_key": "APIM Subscription Key",
-          "api_resource": "API Resource"
+          "api_resource": "API Resource",
+          "b2c_refresh_token": "B2C Refresh Token"
         },
         "data_description": {
           "username": "Your Kohler Konnect account email",
           "password": "Your Kohler Konnect account password",
           "client_id": "OAuth client ID (from APK)",
           "apim_subscription_key": "Azure API Management key (from mitmproxy)",
-          "api_resource": "API resource identifier (from APK)"
+          "api_resource": "API resource identifier (from APK)",
+          "b2c_refresh_token": "Required for outlet/valve/preset writes. Run `python -m kohler_anthem.b2c_signin url` in a Python venv with kohler-anthem installed, sign in via the browser, copy the msauth:// URL from the address bar, then run `python -m kohler_anthem.b2c_signin exchange '<url>'` to print the refresh token. Paste the result here."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Kohler Anthem — Refresh Token Expired",
+        "description": "Your B2C refresh token was rejected. Run `python -m kohler_anthem.b2c_signin url` and `exchange` again, then paste the new refresh token below.",
+        "data": {
+          "b2c_refresh_token": "B2C Refresh Token"
         }
       }
     },
     "error": {
       "invalid_auth": "Invalid authentication credentials",
+      "invalid_b2c_refresh_token": "B2C refresh token is invalid or expired",
       "cannot_connect": "Failed to connect to Kohler API",
       "cannot_discover": "Could not discover devices. Check your credentials.",
       "unknown": "An unexpected error occurred"
     },
     "abort": {
-      "already_configured": "This account is already configured"
+      "already_configured": "This account is already configured",
+      "reauth_successful": "Refresh token updated; integration reloaded"
     }
   }
 }

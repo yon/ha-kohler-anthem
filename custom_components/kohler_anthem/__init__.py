@@ -16,16 +16,19 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from homeassistant.exceptions import ConfigEntryAuthFailed
+
 from .const import (
     CONF_API_RESOURCE,
     CONF_APIM_KEY,
+    CONF_B2C_REFRESH_TOKEN,
     CONF_CLIENT_ID,
     CONF_TENANT_ID,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
 from kohler_anthem import KohlerAnthemClient, KohlerConfig
-from kohler_anthem.exceptions import KohlerAnthemError
+from kohler_anthem.exceptions import AuthenticationError, KohlerAnthemError
 from kohler_anthem.models import DeviceState
 from kohler_anthem.mqtt import KohlerMqttClient
 
@@ -83,12 +86,23 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Kohler Anthem from a config entry."""
+    b2c_refresh_token = entry.data.get(CONF_B2C_REFRESH_TOKEN)
+    if not b2c_refresh_token:
+        # Pre-0.2.0 config entry — needs reauth to seed the refresh token
+        # before /commands/* writes will work.
+        raise ConfigEntryAuthFailed(
+            "No b2c_refresh_token configured. Run "
+            "`python -m kohler_anthem.b2c_signin` and paste the result "
+            "into the integration's reauth prompt."
+        )
+
     config = KohlerConfig(
         username=entry.data[CONF_USERNAME],
         password=entry.data[CONF_PASSWORD],
         client_id=entry.data[CONF_CLIENT_ID],
         apim_subscription_key=entry.data[CONF_APIM_KEY],
         api_resource=entry.data[CONF_API_RESOURCE],
+        b2c_refresh_token=b2c_refresh_token,
     )
     tenant_id = entry.data[CONF_TENANT_ID]
 
@@ -96,9 +110,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     try:
         await client.connect()
+    except AuthenticationError as err:
+        _LOGGER.error("Authentication failed (will trigger reauth): %s", err)
+        raise ConfigEntryAuthFailed(str(err)) from err
     except KohlerAnthemError as err:
         _LOGGER.error("Failed to connect to Kohler API: %s", err)
         return False
+
+    def _persist_rotated_refresh_token() -> None:
+        """B2C rotates the refresh_token on each silent refresh; persist it."""
+        rotated = client.b2c_refresh_token
+        if rotated and rotated != entry.data.get(CONF_B2C_REFRESH_TOKEN):
+            hass.config_entries.async_update_entry(
+                entry,
+                data={**entry.data, CONF_B2C_REFRESH_TOKEN: rotated},
+            )
 
     # Discover devices
     try:
@@ -124,10 +150,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             for device in devices:
                 state = await client.get_device_state(device.device_id)
                 states[device.device_id] = state
+            # After any successful exchange that may have rotated the B2C
+            # refresh_token, persist the latest value so an HA restart can
+            # resume without re-prompting the user.
+            _persist_rotated_refresh_token()
             return {
                 "states": states,
                 "devices": devices,
             }
+        except AuthenticationError as err:
+            raise ConfigEntryAuthFailed(
+                f"Auth failed during update; reauth required: {err}"
+            ) from err
         except KohlerAnthemError as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
