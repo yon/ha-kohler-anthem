@@ -52,6 +52,10 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Required(CONF_CLIENT_ID): cv.string,
                 vol.Required(CONF_APIM_KEY): cv.string,
                 vol.Required(CONF_API_RESOURCE): cv.string,
+                # Optional in YAML so existing configs keep importing cleanly.
+                # If absent, async_setup_entry raises ConfigEntryAuthFailed and
+                # HA prompts the user to reauth with a freshly-captured token.
+                vol.Optional(CONF_B2C_REFRESH_TOKEN): cv.string,
             }
         )
     },
